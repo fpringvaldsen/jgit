@@ -234,6 +234,10 @@ public abstract class WorkingTreeIterator extends AbstractTreeIterator {
 		state.dirCacheTree = treeId;
 	}
 
+    protected DirCacheIterator getDirCacheIterator() {
+        return state.walk.getTree(state.dirCacheTree, DirCacheIterator.class);
+    }
+
 	@Override
 	public boolean hasId() {
 		if (contentIdFromPtr == ptr)
@@ -251,8 +255,7 @@ public abstract class WorkingTreeIterator extends AbstractTreeIterator {
 			// its idBuffer, but only if we appear to be clean against
 			// the cached index information for the path.
 			//
-			DirCacheIterator i = state.walk.getTree(state.dirCacheTree,
-					DirCacheIterator.class);
+			DirCacheIterator i = getDirCacheIterator();
 			if (i != null) {
 				DirCacheEntry ent = i.getDirCacheEntry();
 				if (ent != null && compareMetadata(ent) == MetadataDiff.EQUAL) {
@@ -923,15 +926,21 @@ public abstract class WorkingTreeIterator extends AbstractTreeIterator {
 		final FileMode wtMode = getEntryFileMode();
 		if (indexIter == null)
 			return wtMode;
-		if (getOptions().isFileMode())
+        final FileMode iMode = indexIter.getEntryFileMode();
+		if (getOptions().isFileMode() && iMode != FileMode.GITLINK && iMode != FileMode.TREE)
 			return wtMode;
-		final FileMode iMode = indexIter.getEntryFileMode();
 		if (FileMode.REGULAR_FILE == wtMode
 				&& FileMode.EXECUTABLE_FILE == iMode)
 			return iMode;
 		if (FileMode.EXECUTABLE_FILE == wtMode
 				&& FileMode.REGULAR_FILE == iMode)
 			return iMode;
+        if (FileMode.GITLINK == iMode
+                && FileMode.TREE == wtMode)
+            return iMode;
+        if (FileMode.TREE == iMode
+                && FileMode.GITLINK == wtMode)
+            return iMode;
 		return wtMode;
 	}
 
